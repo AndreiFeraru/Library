@@ -1,6 +1,6 @@
 ﻿namespace Library.Models
 {
-    internal abstract class LibraryItem : IBorrowable
+    public abstract class LibraryItem : IBorrowable
     {
         public int ID { get; set; }
 
@@ -35,7 +35,9 @@
                 return 0;
             }
 
-            return CalculateReturnPrice();
+            var price = CalculateReturnPrice();
+            LastBorrowDate = null;
+            return price;
         }
 
         private double CalculateReturnPrice()
@@ -47,9 +49,10 @@
             var daysSinceBorrow = todaysDate.DayNumber - LastBorrowDate.Value.DayNumber;
             var penaltyDays = daysSinceBorrow - Constants.MAX_BORROW_WINDOW_IN_DAYS;
 
-            return penaltyDays > 0 ?
-                Price * (1 + penaltyDays * Constants.DAILY_PENALTY_PERCENT_FROM_INITIAL_PRICE / 100) :
-                Price;
+            if (penaltyDays <= 0)
+                return Price;
+
+            return Price * (1 + penaltyDays * Constants.DAILY_PENALTY_PERCENT_FROM_INITIAL_PRICE / 100.0);
         }
 
     }

@@ -1,10 +1,15 @@
 ﻿namespace Library.Models
 {
-    internal class LibraryCatalog
+    public class LibraryCatalog
     {
-        public required List<LibraryItem> Items { get; set; }
+        public List<LibraryItem> Items { get; set; }
 
-        public int GetMaxID() => Items.Any() ? Items.Max(i => i.ID) : 0;
+        public LibraryCatalog(IEnumerable<LibraryItem> items)
+        {
+            Items = new List<LibraryItem>(items);
+        }
+
+        public int GetMaxID() => Items.Any() ? Items.Max(i => i.ID) : Constants.EMPTY_CATALOG_ID;
 
         public IEnumerable<Book> GetAllBooks()
         {

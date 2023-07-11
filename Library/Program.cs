@@ -4,51 +4,54 @@ namespace Library
 {
     internal class Program
     {
-        public static LibraryCatalog MyCatalog;
+        private static Library _myLibrary = new(new LibraryCatalog(new List<LibraryItem>()));
 
         static void Main(string[] args)
         {
-            MyCatalog = new LibraryCatalog { Items = new List<LibraryItem>() };
 
             Console.WriteLine("Welcome to the library management system!");
 
             var inputCommand = string.Empty;
             while (inputCommand != "0")
             {
-                Console.WriteLine(
-                    "\n-----" +
-                    "\nCommands:" +
-                    "\n  1 - Add book" +
-                    "\n  2 - List books in library" +
-                    "\n  3 - Get book number of copies" +
-                    "\n  4 - Borrow book" +
-                    "\n  5 - Return book" +
-                    "\n  0 - Exit" +
-                    "\n-----\n");
-
+                ShowCommands();
                 inputCommand = Console.ReadLine()?.Trim();
                 switch (inputCommand)
                 {
                     case "1":
-                        AddBook();
+                        AddBookCommand();
                         break;
                     case "2":
-                        ListBooks();
+                        ListBooksCommand();
                         break;
                     case "3":
-                        GetNumberOfCopies();
+                        GetNumberOfCopiesCommand();
                         break;
                     case "4":
-                        BorrowBook();
+                        BorrowBookCommand();
                         break;
                     case "5":
-                        ReturnBook();
+                        ReturnBookCommand();
                         break;
                 }
             }
         }
 
-        private static void AddBook()
+        private static void ShowCommands()
+        {
+            Console.WriteLine(
+                "\n-----" +
+                "\nCommands:" +
+                "\n  1 - Add book" +
+                "\n  2 - List books in library" +
+                "\n  3 - Get book number of copies" +
+                "\n  4 - Borrow book" +
+                "\n  5 - Return book" +
+                "\n  0 - Exit" +
+                "\n-----\n");
+        }
+
+        private static void AddBookCommand()
         {
             var inputTitle = string.Empty;
             while (string.IsNullOrEmpty(inputTitle))
@@ -71,26 +74,61 @@ namespace Library
                 double.TryParse(Console.ReadLine()?.Trim(), out inputPrice);
             }
 
-            MyCatalog.Items.Add(new Book(inputTitle, inputISBN, MyCatalog.GetMaxID() + 1, inputPrice));
-            Console.WriteLine("Book successfully added!\n");
+            Console.WriteLine("Please provide the book author: (Press enter to skip)");
+            string inputAuthor = Console.ReadLine()?.Trim();
+
+            Console.WriteLine("Please provide the book publish date: (YYYY/MM/DD format, Press enter to skip)");
+            string inputPublishDate = Console.ReadLine()?.Trim();
+            DateOnly? publishDate;
+            try
+            {
+                publishDate = DateOnly.Parse(inputPublishDate);
+            }
+            catch
+            {
+                publishDate = null;
+            }
+
+            Console.WriteLine("Please provide the book type: (Press enter to skip)\n" +
+                "  0 - PaperBack\n" +
+                "  1 - HardCover\n" +
+                "  2 - Ebook");
+            string inputBookType = Console.ReadLine()?.Trim();
+            BookType? bookType;
+            try
+            {
+                bookType = (BookType)int.Parse(inputBookType);
+            }
+            catch
+            {
+                bookType = null;
+            }
+
+            var success = _myLibrary.AddBook(inputTitle, inputISBN, inputPrice, inputAuthor, publishDate, bookType);
+            if (success)
+                Console.WriteLine("Book successfully added!\n");
+            else
+                Console.WriteLine("Book successfully added!\n");
         }
 
-        private static void ListBooks()
+        private static void ListBooksCommand()
         {
             Console.WriteLine("Books in library:");
-            foreach (var book in MyCatalog.GetAllBooks().Where(b => b.IsBorrowed() == false))
+            Console.WriteLine("ID | Title | ISBN | Price | Author | Publish date | Book type");
+            foreach (var book in _myLibrary.GetNonBorrowedBooks())
             {
                 Console.WriteLine(
                     $"{book.ID} | " +
                     $"{book.Title} | " +
                     $"{book.ISBN} | " +
+                    $"{book.Price} | " +
                     $"{book.Author ?? string.Empty} | " +
                     $"{book.PublishDate.ToString() ?? string.Empty} | " +
                     $"{book.Type.ToString() ?? string.Empty}");
             }
         }
 
-        private static void GetNumberOfCopies()
+        private static void GetNumberOfCopiesCommand()
         {
             var inputTitle = string.Empty;
             while (string.IsNullOrEmpty(inputTitle))
@@ -98,13 +136,11 @@ namespace Library
                 Console.WriteLine("Please provide the book title:");
                 inputTitle = Console.ReadLine()?.Trim();
             }
-            var noOfCopies = MyCatalog.GetAllBooks()
-                .Where(x => x.Title.Equals(inputTitle, StringComparison.OrdinalIgnoreCase))
-                .Count();
+            var noOfCopies = _myLibrary.GetNumberOfCopiesByTitle(inputTitle);
             Console.WriteLine($"Number of copies, including borrowed for '{inputTitle}' is {noOfCopies}");
         }
 
-        private static void BorrowBook()
+        private static void BorrowBookCommand()
         {
             var inputTitle = string.Empty;
             while (string.IsNullOrEmpty(inputTitle))
@@ -113,41 +149,35 @@ namespace Library
                 inputTitle = Console.ReadLine()?.Trim();
             }
 
-            var booksByName = MyCatalog.GetAllBooks()
-                .Where(b => b.Title.Equals(inputTitle, StringComparison.OrdinalIgnoreCase) && b.IsBorrowed() == false);
-
-            if (!booksByName.Any())
+            try
             {
-                Console.WriteLine($"There are no available copies of the book '{inputTitle}'");
-                return;
+                var idOfBorrowedCopy = _myLibrary.BorrowBookByTitle(inputTitle);
+                Console.WriteLine($"Book '{inputTitle}' with id {idOfBorrowedCopy} has been borrowed.");
             }
-
-            var copyToBorrow = booksByName.First();
-            copyToBorrow.Borrow();
-            Console.WriteLine($"Book '{inputTitle}' with id {copyToBorrow.ID} has been borrowed.");
-
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+            }
         }
 
-        private static void ReturnBook()
+        private static void ReturnBookCommand()
         {
-            var inputID = -1;
-            while (inputID == -1)
+            var inputId = -1;
+            while (inputId == -1)
             {
                 Console.WriteLine("Please provide the book ID:");
-                int.TryParse(Console.ReadLine()?.Trim(), out inputID);
+                int.TryParse(Console.ReadLine()?.Trim(), out inputId);
             }
 
-            var booksByID = MyCatalog.GetAllBooks()
-                .Where(b => b.ID == inputID && b.IsBorrowed() == true);
-
-            if (!booksByID.Any())
+            try
             {
-                Console.WriteLine($"Book with ID equal to '{inputID}' is not borrowed or does not exist.");
-                return;
+                var price = _myLibrary.ReturnBookById(inputId);
+                Console.WriteLine($"Book successfully returned. Price to pay is '{price}'");
             }
-
-            var copyToReturn = booksByID.First();
-            copyToReturn.ReturnAndGetPrice();
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+            }
         }
     }
 }

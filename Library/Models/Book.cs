@@ -1,6 +1,6 @@
 ﻿namespace Library.Models
 {
-    internal class Book : LibraryItem
+    public class Book : LibraryItem
     {
         public string Title { get; set; }
         public string ISBN { get; set; }
@@ -16,7 +16,7 @@
         }
     }
 
-    enum BookType
+    public enum BookType
     {
         PaperBack,
         HardCover,
